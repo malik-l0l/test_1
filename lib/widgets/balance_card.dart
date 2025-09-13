@@ -27,7 +27,7 @@ class _BalanceCardState extends State<BalanceCard>
   late Animation<double> _chartFadeAnimation;
   late Animation<double> _balanceScaleAnimation;
   late Animation<double> _balanceFadeAnimation;
-  
+
   List<FlSpot> _chartData = [];
   List<DailyBalance> _dailyBalances = [];
   double _minY = 0;
@@ -36,12 +36,12 @@ class _BalanceCardState extends State<BalanceCard>
   @override
   void initState() {
     super.initState();
-    
+
     _chartAnimationController = AnimationController(
       duration: Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _balanceAnimationController = AnimationController(
       duration: Duration(milliseconds: 400),
       vsync: this,
@@ -83,6 +83,15 @@ class _BalanceCardState extends State<BalanceCard>
   }
 
   @override
+  void didUpdateWidget(BalanceCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Regenerate chart data when balance changes (real-time updates)
+    if (oldWidget.balance != widget.balance) {
+      _generateChartData();
+    }
+  }
+
+  @override
   void dispose() {
     _chartAnimationController.dispose();
     _balanceAnimationController.dispose();
@@ -91,46 +100,39 @@ class _BalanceCardState extends State<BalanceCard>
 
   void _generateChartData() {
     final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
-    
+
     _dailyBalances = [];
     _chartData = [];
-    
+
     // Get all transactions for this month
     final monthlyTransactions = HiveService.getMonthlyTransactions(now);
-    
+
     // Calculate daily balances
     double runningBalance = widget.balance;
-    
+
     // Work backwards from today to calculate historical balances
     for (int day = now.day; day >= 1; day--) {
       final currentDate = DateTime(now.year, now.month, day);
-      final dayTransactions = monthlyTransactions.where((t) => 
-        t.date.day == day && 
-        t.date.month == now.month && 
-        t.date.year == now.year
-      ).toList();
-      
+
       // If this is today, use current balance
       if (day == now.day) {
         _dailyBalances.insert(0, DailyBalance(currentDate, runningBalance));
       } else {
         // Subtract transactions that happened after this day
-        final futureTransactions = monthlyTransactions.where((t) => 
-          t.date.isAfter(currentDate)
-        ).toList();
-        
+        final futureTransactions = monthlyTransactions
+            .where((t) => t.date.isAfter(currentDate))
+            .toList();
+
         double historicalBalance = widget.balance;
         for (final transaction in futureTransactions) {
           historicalBalance -= transaction.amount;
         }
-        
+
         _dailyBalances.insert(0, DailyBalance(currentDate, historicalBalance));
         runningBalance = historicalBalance;
       }
     }
-    
+
     // Convert to chart data
     for (int i = 0; i < _dailyBalances.length; i++) {
       _chartData.add(FlSpot(
@@ -138,19 +140,19 @@ class _BalanceCardState extends State<BalanceCard>
         _dailyBalances[i].balance,
       ));
     }
-    
+
     // Calculate min/max for chart scaling
     if (_chartData.isNotEmpty) {
       final balances = _chartData.map((spot) => spot.y).toList();
       _minY = balances.reduce((a, b) => a < b ? a : b);
       _maxY = balances.reduce((a, b) => a > b ? a : b);
-      
+
       // Add padding to min/max
       final range = _maxY - _minY;
       final padding = range * 0.1;
       _minY -= padding;
       _maxY += padding;
-      
+
       // Ensure we have some range even if all values are the same
       if (range == 0) {
         _minY -= 100;
@@ -181,7 +183,7 @@ class _BalanceCardState extends State<BalanceCard>
         duration: Duration(milliseconds: 600),
         curve: Curves.easeInOutCubic,
         width: double.infinity,
-        height: _showChart ? 320 : 120,
+        height: _showChart ? 240 : 120,
         padding: EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.transparent,
@@ -202,7 +204,7 @@ class _BalanceCardState extends State<BalanceCard>
                 );
               },
             ),
-            
+
             // Chart Display
             if (_showChart)
               AnimatedBuilder(
@@ -226,7 +228,7 @@ class _BalanceCardState extends State<BalanceCard>
   Widget _buildBalanceDisplay() {
     final balanceColor = _getBalanceColor();
     final statusText = _getBalanceStatus();
-    
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -240,9 +242,9 @@ class _BalanceCardState extends State<BalanceCard>
             letterSpacing: -1,
           ),
         ),
-        
+
         SizedBox(height: 8),
-        
+
         // Balance Status Indicator
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -273,40 +275,8 @@ class _BalanceCardState extends State<BalanceCard>
             ),
           ],
         ),
-        
+
         SizedBox(height: 16),
-        
-        // Tap hint
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.show_chart,
-                color: Colors.white.withOpacity(0.7),
-                size: 16,
-              ),
-              SizedBox(width: 6),
-              Text(
-                'Tap to view trend',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -378,232 +348,148 @@ class _BalanceCardState extends State<BalanceCard>
             ),
           ],
         ),
-        
+
         SizedBox(height: 20),
-        
-        // Chart
+
+        // Chart - Increased height to prevent overflow
         Expanded(
-          child: LineChart(
-            LineChartData(
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: (_maxY - _minY) / 4,
-                getDrawingHorizontalLine: (value) {
-                  return FlLine(
-                    color: Colors.white.withOpacity(0.1),
-                    strokeWidth: 1,
-                  );
-                },
-              ),
-              titlesData: FlTitlesData(
-                show: true,
-                rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 30,
-                    interval: 5,
-                    getTitlesWidget: (value, meta) {
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        child: Text(
-                          value.toInt().toString(),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 60,
-                    interval: (_maxY - _minY) / 4,
-                    getTitlesWidget: (value, meta) {
-                      return SideTitleWidget(
-                        axisSide: meta.axisSide,
-                        child: Text(
-                          '${widget.currency}${_formatChartValue(value)}',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              minX: 1,
-              maxX: DateTime.now().day.toDouble(),
-              minY: _minY,
-              maxY: _maxY,
-              lineBarsData: [
-                LineChartBarData(
-                  spots: _chartData,
-                  isCurved: true,
-                  curveSmoothness: 0.3,
-                  color: _getChartLineColor(),
-                  barWidth: 3,
-                  isStrokeCapRound: true,
-                  dotData: FlDotData(
-                    show: true,
-                    getDotPainter: (spot, percent, barData, index) {
-                      return FlDotCirclePainter(
-                        radius: 4,
-                        color: _getChartLineColor(),
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
-                      );
-                    },
-                  ),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        _getChartLineColor().withOpacity(0.3),
-                        _getChartLineColor().withOpacity(0.05),
-                      ],
-                    ),
-                  ),
-                  shadow: Shadow(
-                    color: _getChartLineColor().withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ),
-              ],
-              lineTouchData: LineTouchData(
-                enabled: true,
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipColor: (touchedSpot) => Colors.black.withOpacity(0.8),
-                  getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                    return touchedBarSpots.map((barSpot) {
-                      final day = barSpot.x.toInt();
-                      final balance = barSpot.y;
-                      final date = DateTime(DateTime.now().year, DateTime.now().month, day);
-                      
-                      return LineTooltipItem(
-                        '${DateFormatter.formatShortDate(date)}\n${widget.currency}${balance.toStringAsFixed(2)}',
-                        TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      );
-                    }).toList();
+          child: Container(
+            height: 140, // Fixed height to prevent overflow
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: (_maxY - _minY) / 4,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.white.withOpacity(0.1),
+                      strokeWidth: 1,
+                    );
                   },
                 ),
-                touchCallback: (FlTouchEvent event, LineTouchResponse? touchResponse) {
-                  // Add haptic feedback on touch
-                  if (event is FlTapUpEvent) {
-                    // HapticFeedback.lightImpact();
-                  }
-                },
+                titlesData: FlTitlesData(
+                  show: true,
+                  rightTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles:
+                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 25,
+                      interval: 5,
+                      getTitlesWidget: (value, meta) {
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            value.toInt().toString(),
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 50,
+                      interval: (_maxY - _minY) / 3,
+                      getTitlesWidget: (value, meta) {
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            '${widget.currency}${_formatChartValue(value)}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                minX: 1,
+                maxX: DateTime.now().day.toDouble(),
+                minY: _minY,
+                maxY: _maxY,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: _chartData,
+                    isCurved: true,
+                    curveSmoothness: 0.3,
+                    color: _getChartLineColor(),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4,
+                          color: _getChartLineColor(),
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          _getChartLineColor().withOpacity(0.3),
+                          _getChartLineColor().withOpacity(0.05),
+                        ],
+                      ),
+                    ),
+                    shadow: Shadow(
+                      color: _getChartLineColor().withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ),
+                ],
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (touchedSpot) =>
+                        Colors.black.withOpacity(0.8),
+                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                      return touchedBarSpots.map((barSpot) {
+                        final day = barSpot.x.toInt();
+                        final balance = barSpot.y;
+                        final date = DateTime(
+                            DateTime.now().year, DateTime.now().month, day);
+
+                        return LineTooltipItem(
+                          '${DateFormatter.formatShortDate(date)}\n${widget.currency}${balance.toStringAsFixed(2)}',
+                          TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                  touchCallback:
+                      (FlTouchEvent event, LineTouchResponse? touchResponse) {
+                    // Add haptic feedback on touch
+                    if (event is FlTapUpEvent) {
+                      // HapticFeedback.lightImpact();
+                    }
+                  },
+                ),
               ),
             ),
-          ),
-        ),
-        
-        SizedBox(height: 16),
-        
-        // Chart Stats
-        _buildChartStats(),
-      ],
-    );
-  }
-
-  Widget _buildChartStats() {
-    if (_dailyBalances.isEmpty) return SizedBox.shrink();
-    
-    final firstBalance = _dailyBalances.first.balance;
-    final lastBalance = _dailyBalances.last.balance;
-    final change = lastBalance - firstBalance;
-    final changePercent = firstBalance != 0 ? (change / firstBalance.abs()) * 100 : 0;
-    
-    final isPositiveChange = change >= 0;
-    final changeColor = isPositiveChange ? Colors.green : Colors.red;
-    
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(
-            'Month Start',
-            '${widget.currency}${firstBalance.toStringAsFixed(2)}',
-            Icons.calendar_today,
-            Colors.white.withOpacity(0.8),
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.white.withOpacity(0.2),
-          ),
-          _buildStatItem(
-            'Change',
-            '${isPositiveChange ? '+' : ''}${widget.currency}${change.toStringAsFixed(2)}',
-            isPositiveChange ? Icons.trending_up : Icons.trending_down,
-            changeColor,
-          ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.white.withOpacity(0.2),
-          ),
-          _buildStatItem(
-            'Trend',
-            '${isPositiveChange ? '+' : ''}${changePercent.toStringAsFixed(1)}%',
-            isPositiveChange ? Icons.arrow_upward : Icons.arrow_downward,
-            changeColor,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: color,
-          size: 16,
-        ),
-        SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.white.withOpacity(0.6),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            color: color,
-            fontWeight: FontWeight.w600,
           ),
         ),
       ],
