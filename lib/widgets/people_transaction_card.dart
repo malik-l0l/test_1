@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import '../models/people_transaction.dart';
 import '../utils/date_formatter.dart';
 import '../services/hive_service.dart';
+import '../services/transaction_analysis_service.dart';
 
 class PeopleTransactionCard extends StatelessWidget {
   final PeopleTransaction transaction;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final List<PeopleTransaction>? allTransactions;
+  final bool showSeparator;
 
   const PeopleTransactionCard({
     Key? key,
     required this.transaction,
     this.onEdit,
     this.onDelete,
+    this.allTransactions,
+    this.showSeparator = false,
   }) : super(key: key);
 
   @override
@@ -53,8 +58,10 @@ class PeopleTransactionCard extends StatelessWidget {
         actionText = isGiven ? 'Given' : 'Taken';
     }
     
+    Widget cardWidget;
+    
     if (settings.cardTheme == 'theme1') {
-      return Container(
+      cardWidget = Container(
         margin: EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: amountColor.withOpacity(0.05),
@@ -183,7 +190,7 @@ class PeopleTransactionCard extends StatelessWidget {
       );
     } else {
       // Theme 2 - Original design
-      return Container(
+      cardWidget = Container(
         margin: EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
@@ -319,5 +326,89 @@ class PeopleTransactionCard extends StatelessWidget {
         ),
       );
     }
+    
+    // Wrap with separator if needed
+    if (showSeparator) {
+      return Column(
+        children: [
+          cardWidget,
+          _buildSettlementSeparator(context),
+        ],
+      );
+    }
+    
+    return cardWidget;
+  }
+  
+  Widget _buildSettlementSeparator(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.grey[400]!,
+                    Colors.grey[400]!,
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.green.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 16,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'SETTLED',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.grey[400]!,
+                    Colors.grey[400]!,
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

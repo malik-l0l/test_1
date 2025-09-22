@@ -130,4 +130,20 @@ class PeopleTransaction extends HiveObject {
         }
     }
   }
+
+  // Check if this transaction creates a settlement point
+  bool isSettlementPoint(List<PeopleTransaction> allTransactions) {
+    // Find this transaction's index in the list
+    final thisIndex = allTransactions.indexWhere((t) => t.id == id);
+    if (thisIndex == -1 || thisIndex == allTransactions.length - 1) return false;
+    
+    // Calculate running balance up to this transaction
+    double runningBalance = 0.0;
+    for (int i = allTransactions.length - 1; i >= thisIndex; i--) {
+      runningBalance += allTransactions[i].balanceImpact;
+    }
+    
+    // Check if balance becomes zero after this transaction
+    return runningBalance == 0.0;
+  }
 }

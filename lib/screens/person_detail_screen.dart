@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/people_hive_service.dart';
 import '../services/contact_service.dart';
+import '../services/transaction_analysis_service.dart';
 import '../models/people_transaction.dart';
 import '../models/person_summary.dart';
 import '../widgets/people_transaction_card.dart';
@@ -204,6 +205,8 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
   }
 
   Widget _buildTransactionsList() {
+    final settlementPoints = TransactionAnalysisService.findSettlementPoints(_transactions);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -246,8 +249,12 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
             itemCount: _transactions.length,
             itemBuilder: (context, index) {
               final transaction = _transactions[index];
+              final showSeparator = settlementPoints.contains(index);
+              
               return PeopleTransactionCard(
                 transaction: transaction,
+                allTransactions: _transactions,
+                showSeparator: showSeparator,
                 onEdit: () => _editTransaction(transaction),
                 onDelete: () => _deleteTransaction(transaction),
               );

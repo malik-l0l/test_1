@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/share_service.dart';
 import '../services/contact_service.dart';
+import '../services/transaction_analysis_service.dart';
 import '../models/person_summary.dart';
 import '../models/people_transaction.dart';
 import '../widgets/custom_snackbar.dart';
@@ -27,10 +28,13 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late FocusNode _phoneFocus;
   bool _isLoading = false;
-  
+
   // Transaction selection variables
   int _selectedTransactionCount = 5;
   late int _maxTransactions;
+  bool _useDefaultMode = true; // New: Default vs Custom mode
+  late List<PeopleTransaction> _defaultTransactions;
+  late double _defaultBalance;
 
   @override
   void initState() {
@@ -59,12 +63,20 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
 
     _phoneFocus = FocusNode();
     _maxTransactions = widget.allTransactions.length;
-    
+
+    // Calculate default transactions (above last settlement)
+    _defaultTransactions =
+        TransactionAnalysisService.getTransactionsAboveLastSettlement(
+            widget.allTransactions);
+    _defaultBalance = TransactionAnalysisService.getBalanceAboveLastSettlement(
+        widget.allTransactions);
+
     // Set default transaction count (max 10 or total available)
     _selectedTransactionCount = (_maxTransactions < 5) ? _maxTransactions : 5;
 
     // Load existing phone number if available
-    final existingPhone = ContactService.getPersonPhoneNumber(widget.person.name);
+    final existingPhone =
+        ContactService.getPersonPhoneNumber(widget.person.name);
     _phoneController = TextEditingController(text: existingPhone ?? '');
 
     _animationController.forward();
@@ -79,10 +91,25 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
   }
 
   List<PeopleTransaction> get _selectedTransactions {
-    return widget.allTransactions.take(_selectedTransactionCount).toList();
+    if (_useDefaultMode) {
+      return _defaultTransactions;
+    } else {
+      return widget.allTransactions.take(_selectedTransactionCount).toList();
+    }
   }
 
   List<PeopleTransaction> get _previousTransactions {
+    if (_useDefaultMode) {
+      // For default mode, previous transactions are everything below the last settlement
+      final settlementPoints = TransactionAnalysisService.findSettlementPoints(
+          widget.allTransactions);
+      if (settlementPoints.isEmpty) {
+        return [];
+      }
+      final lastSettlementIndex = settlementPoints.first;
+      return widget.allTransactions.sublist(lastSettlementIndex);
+    }
+
     if (_selectedTransactionCount >= widget.allTransactions.length) {
       return [];
     }
@@ -90,8 +117,13 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
   }
 
   double get _previousTransactionsBalance {
+    if (_useDefaultMode) {
+      return TransactionAnalysisService.getPreviousBalance(
+          widget.allTransactions);
+    }
+
     return _previousTransactions.fold<double>(
-      0.0, 
+      0.0,
       (sum, transaction) => sum + transaction.balanceImpact,
     );
   }
@@ -117,14 +149,16 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
               ),
               // Modal content
               Transform.translate(
-                offset: Offset(0, _slideAnimation.value * MediaQuery.of(context).size.height),
+                offset: Offset(0,
+                    _slideAnimation.value * MediaQuery.of(context).size.height),
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
                     height: MediaQuery.of(context).size.height * 0.85,
                     decoration: BoxDecoration(
                       color: Theme.of(context).scaffoldBackgroundColor,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(24)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
@@ -144,8 +178,11 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
                               children: [
                                 _buildPhoneNumberField(),
                                 SizedBox(height: 24),
-                                _buildTransactionSelector(),
+                                _buildShareModeSelector(),
                                 SizedBox(height: 24),
+                                if (!_useDefaultMode)
+                                  _buildTransactionSelector(),
+                                if (!_useDefaultMode) SizedBox(height: 24),
                                 _buildPreview(),
                                 SizedBox(height: 32),
                                 _buildShareOptions(),
@@ -315,6 +352,184 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildShareModeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Share Mode',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).textTheme.titleMedium?.color,
+          ),
+        ),
+        SizedBox(height: 12),
+
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              // Default Mode
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _useDefaultMode = true;
+                    });
+                    HapticFeedback.lightImpact();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: _useDefaultMode
+                          ? Theme.of(context).primaryColor
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.auto_awesome,
+                          color: _useDefaultMode
+                              ? Colors.white
+                              : Theme.of(context).primaryColor,
+                          size: 20,
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Default',
+                          style: TextStyle(
+                            color: _useDefaultMode
+                                ? Colors.white
+                                : Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Since last settlement',
+                          style: TextStyle(
+                            color: _useDefaultMode
+                                ? Colors.white.withOpacity(0.8)
+                                : Colors.grey[600],
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              // Custom Mode
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _useDefaultMode = false;
+                    });
+                    HapticFeedback.lightImpact();
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color:
+                          !_useDefaultMode ? Colors.purple : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.tune,
+                          color:
+                              !_useDefaultMode ? Colors.white : Colors.purple,
+                          size: 20,
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Custom',
+                          style: TextStyle(
+                            color:
+                                !_useDefaultMode ? Colors.white : Colors.purple,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Choose count',
+                          style: TextStyle(
+                            color: !_useDefaultMode
+                                ? Colors.white.withOpacity(0.8)
+                                : Colors.grey[600],
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        SizedBox(height: 12),
+
+        // Mode description
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: (_useDefaultMode
+                    ? Theme.of(context).primaryColor
+                    : Colors.purple)
+                .withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: (_useDefaultMode
+                      ? Theme.of(context).primaryColor
+                      : Colors.purple)
+                  .withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _useDefaultMode ? Icons.info_outline : Icons.settings,
+                color: _useDefaultMode
+                    ? Theme.of(context).primaryColor
+                    : Colors.purple,
+                size: 16,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _useDefaultMode
+                      ? 'Shares ${_defaultTransactions.length} transactions since last settlement (₹${_defaultBalance.abs().toStringAsFixed(2)})'
+                      : 'Choose how many recent transactions to share',
+                  style: TextStyle(
+                    color: _useDefaultMode
+                        ? Theme.of(context).primaryColor
+                        : Colors.purple,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTransactionSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,7 +543,7 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
           ),
         ),
         SizedBox(height: 16),
-        
+
         // Custom transaction count selector
         Container(
           padding: EdgeInsets.all(16),
@@ -376,15 +591,17 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
                 ],
               ),
               SizedBox(height: 16),
-              
+
               // Slider for transaction count
               if (_maxTransactions > 1)
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: Theme.of(context).primaryColor,
-                    inactiveTrackColor: Theme.of(context).primaryColor.withOpacity(0.3),
+                    inactiveTrackColor:
+                        Theme.of(context).primaryColor.withOpacity(0.3),
                     thumbColor: Theme.of(context).primaryColor,
-                    overlayColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                    overlayColor:
+                        Theme.of(context).primaryColor.withOpacity(0.2),
                     valueIndicatorColor: Theme.of(context).primaryColor,
                     trackHeight: 4,
                   ),
@@ -392,7 +609,8 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
                     value: _selectedTransactionCount.toDouble(),
                     min: 1,
                     max: _maxTransactions.toDouble(),
-                    divisions: _maxTransactions > 1 ? _maxTransactions - 1 : null,
+                    divisions:
+                        _maxTransactions > 1 ? _maxTransactions - 1 : null,
                     label: '$_selectedTransactionCount transactions',
                     onChanged: (value) {
                       setState(() {
@@ -409,12 +627,22 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
   }
 
   Widget _buildPreview() {
-    final shareText = ShareService.generateShareTextWithPreviousBalance(
-      widget.person, 
-      _selectedTransactions, 
-      _previousTransactionsBalance,
-      _previousTransactions.isNotEmpty,
-    );
+    String shareText;
+
+    if (_useDefaultMode) {
+      shareText = ShareService.generateDefaultShareText(
+        widget.person,
+        _defaultTransactions,
+        _defaultBalance,
+      );
+    } else {
+      shareText = ShareService.generateShareTextWithPreviousBalance(
+        widget.person,
+        _selectedTransactions,
+        _previousTransactionsBalance,
+        _previousTransactions.isNotEmpty,
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,11 +665,15 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
             ),
             Spacer(),
             Text(
-              '${_selectedTransactions.length} transactions',
+              _useDefaultMode
+                  ? '${_defaultTransactions.length} transactions (default)'
+                  : '${_selectedTransactions.length} transactions (custom)',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
                 fontWeight: FontWeight.w500,
+                color: _useDefaultMode
+                    ? Theme.of(context).primaryColor
+                    : Colors.purple,
               ),
             ),
           ],
@@ -494,7 +726,7 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
           ),
         ),
         SizedBox(height: 16),
-        
+
         // Share options in a row with consistent theming
         Row(
           children: [
@@ -605,20 +837,33 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
 
     try {
       final phoneNumber = '+91${_phoneController.text.trim()}';
-      final message = ShareService.generateShareTextWithPreviousBalance(
-        widget.person, 
-        _selectedTransactions, 
-        _previousTransactionsBalance,
-        _previousTransactions.isNotEmpty,
-      );
 
-      await ContactService.savePersonContact(widget.person.name, _phoneController.text.trim());
+      String message;
+      if (_useDefaultMode) {
+        message = ShareService.generateDefaultShareText(
+          widget.person,
+          _defaultTransactions,
+          _defaultBalance,
+        );
+      } else {
+        message = ShareService.generateShareTextWithPreviousBalance(
+          widget.person,
+          _selectedTransactions,
+          _previousTransactionsBalance,
+          _previousTransactions.isNotEmpty,
+        );
+      }
+
+      await ContactService.savePersonContact(
+          widget.person.name, _phoneController.text.trim());
       await ShareService.shareViaWhatsApp(phoneNumber, message);
 
       Navigator.pop(context);
-      CustomSnackBar.show(context, 'Shared via WhatsApp successfully!', SnackBarType.success);
+      CustomSnackBar.show(
+          context, 'Shared via WhatsApp successfully!', SnackBarType.success);
     } catch (e) {
-      CustomSnackBar.show(context, 'Failed to share via WhatsApp: ${e.toString()}', SnackBarType.error);
+      CustomSnackBar.show(context,
+          'Failed to share via WhatsApp: ${e.toString()}', SnackBarType.error);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -630,23 +875,35 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
 
     try {
-      final message = ShareService.generateShareTextWithPreviousBalance(
-        widget.person, 
-        _selectedTransactions, 
-        _previousTransactionsBalance,
-        _previousTransactions.isNotEmpty,
-      );
+      String message;
+      if (_useDefaultMode) {
+        message = ShareService.generateDefaultShareText(
+          widget.person,
+          _defaultTransactions,
+          _defaultBalance,
+        );
+      } else {
+        message = ShareService.generateShareTextWithPreviousBalance(
+          widget.person,
+          _selectedTransactions,
+          _previousTransactionsBalance,
+          _previousTransactions.isNotEmpty,
+        );
+      }
 
       if (_phoneController.text.trim().isNotEmpty) {
-        await ContactService.savePersonContact(widget.person.name, _phoneController.text.trim());
+        await ContactService.savePersonContact(
+            widget.person.name, _phoneController.text.trim());
       }
 
       await ShareService.shareAsText(message);
 
       Navigator.pop(context);
-      CustomSnackBar.show(context, 'Share options opened!', SnackBarType.success);
+      CustomSnackBar.show(
+          context, 'Share options opened!', SnackBarType.success);
     } catch (e) {
-      CustomSnackBar.show(context, 'Failed to share: ${e.toString()}', SnackBarType.error);
+      CustomSnackBar.show(
+          context, 'Failed to share: ${e.toString()}', SnackBarType.error);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -657,11 +914,13 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
   bool _validatePhoneNumber() {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
-      CustomSnackBar.show(context, 'Please enter a phone number', SnackBarType.warning);
+      CustomSnackBar.show(
+          context, 'Please enter a phone number', SnackBarType.warning);
       return false;
     }
     if (phone.length != 10) {
-      CustomSnackBar.show(context, 'Please enter a valid 10-digit phone number', SnackBarType.warning);
+      CustomSnackBar.show(context, 'Please enter a valid 10-digit phone number',
+          SnackBarType.warning);
       return false;
     }
     return true;

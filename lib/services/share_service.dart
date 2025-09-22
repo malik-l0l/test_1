@@ -9,6 +9,56 @@ class ShareService {
   static String generateShareText(PersonSummary person, List<PeopleTransaction> transactions) {
     return generateShareTextWithPreviousBalance(person, transactions, 0.0, false);
   }
+  
+  static String generateDefaultShareText(
+    PersonSummary person, 
+    List<PeopleTransaction> transactions,
+    double currentBalance,
+  ) {
+    final StringBuffer buffer = StringBuffer();
+    
+    // Header with current balance summary
+    if (currentBalance > 0) {
+      buffer.writeln('💰 You owe ₹${currentBalance.abs().toStringAsFixed(2)} to me');
+    } else if (currentBalance < 0) {
+      buffer.writeln('💰 I owe ₹${currentBalance.abs().toStringAsFixed(2)} to you');
+    } else {
+      buffer.writeln('✅ We\'re all settled up!');
+    }
+    
+    buffer.writeln();
+    
+    if (transactions.isNotEmpty) {
+      buffer.writeln('📋 Transactions since last settlement:');
+      buffer.writeln();
+      
+      // Display transactions from newest to oldest with clean format
+      for (final transaction in transactions) {
+        final emoji = transaction.balanceImpact > 0 ? '➕' : '➖';
+        final actionText = _getCleanActionText(transaction);
+        final dateText = DateFormatter.formatDate(transaction.date);
+        
+        buffer.writeln('$emoji ₹${transaction.amount.toStringAsFixed(0).padLeft(3)}  ($actionText)${' ' * (35 - actionText.length)}[$dateText]');
+      }
+      
+      buffer.writeln('——————————————');
+      
+      if (currentBalance > 0) {
+        buffer.writeln('💰 Current: ₹${currentBalance.abs().toStringAsFixed(2)} → You owe me');
+      } else if (currentBalance < 0) {
+        buffer.writeln('💰 Current: ₹${currentBalance.abs().toStringAsFixed(2)} → I owe you');
+      } else {
+        buffer.writeln('💰 Current: ₹0.00 → All settled!');
+      }
+    } else {
+      buffer.writeln('📋 No transactions since last settlement');
+    }
+    
+    buffer.writeln();
+    buffer.writeln('📱 Sent from Money Manager App');
+    
+    return buffer.toString();
+  }
 
   static String generateShareTextWithPreviousBalance(
     PersonSummary person, 
