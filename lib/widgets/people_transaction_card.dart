@@ -10,6 +10,7 @@ class PeopleTransactionCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final List<PeopleTransaction>? allTransactions;
   final bool showSeparator;
+  final int? currentIndex; // Add this parameter
 
   const PeopleTransactionCard({
     Key? key,
@@ -18,17 +19,33 @@ class PeopleTransactionCard extends StatelessWidget {
     this.onDelete,
     this.allTransactions,
     this.showSeparator = false,
+    this.currentIndex, // Add this parameter
   }) : super(key: key);
+
+  bool get _isTransactionDimmed {
+    if (allTransactions == null || currentIndex == null) return false;
+
+    final settlementPoints =
+        TransactionAnalysisService.findSettlementPoints(allTransactions!);
+    if (settlementPoints.isEmpty) return false;
+
+    // Get the last (most recent) settlement point
+    final lastSettlementIndex = settlementPoints.first;
+
+    // Dim transactions that are at or below the last settlement point
+    return currentIndex! > lastSettlementIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
     final settings = HiveService.getUserSettings();
-    
+    final isDimmed = _isTransactionDimmed;
+
     // Get color and icon based on transaction type
     Color amountColor;
     IconData iconData;
     String actionText;
-    
+
     switch (transaction.transactionType) {
       case 'give':
         amountColor = Colors.red;
@@ -57,17 +74,26 @@ class PeopleTransactionCard extends StatelessWidget {
         iconData = isGiven ? Icons.arrow_upward : Icons.arrow_downward;
         actionText = isGiven ? 'Given' : 'Taken';
     }
-    
+
+    // Apply dimming to colors if transaction is settled
+    if (isDimmed) {
+      amountColor = amountColor.withOpacity(0.4);
+    }
+
     Widget cardWidget;
-    
+
     if (settings.cardTheme == 'theme1') {
       cardWidget = Container(
         margin: EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: amountColor.withOpacity(0.05),
+          color: isDimmed
+              ? amountColor.withOpacity(0.02)
+              : amountColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: amountColor.withOpacity(0.2),
+            color: isDimmed
+                ? amountColor.withOpacity(0.1)
+                : amountColor.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -84,7 +110,9 @@ class PeopleTransactionCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: amountColor.withOpacity(0.1),
+                      color: isDimmed
+                          ? amountColor.withOpacity(0.05)
+                          : amountColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -103,6 +131,7 @@ class PeopleTransactionCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: isDimmed ? Colors.grey[500] : null,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -113,28 +142,36 @@ class PeopleTransactionCard extends StatelessWidget {
                             Icon(
                               Icons.calendar_today,
                               size: 14,
-                              color: Colors.grey[600],
+                              color: isDimmed
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                             SizedBox(width: 4),
                             Text(
                               DateFormatter.formatDate(transaction.date),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: isDimmed
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                             SizedBox(width: 12),
                             Icon(
                               Icons.access_time,
                               size: 14,
-                              color: Colors.grey[600],
+                              color: isDimmed
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                             SizedBox(width: 4),
                             Text(
                               DateFormatter.formatTime(transaction.timestamp),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: isDimmed
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           ],
@@ -171,13 +208,15 @@ class PeopleTransactionCard extends StatelessWidget {
                       child: Container(
                         padding: EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withOpacity(isDimmed ? 0.05 : 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(
                           Icons.delete_outline,
                           size: 16,
-                          color: Colors.red,
+                          color: isDimmed
+                              ? Colors.red.withOpacity(0.4)
+                              : Colors.red,
                         ),
                       ),
                     ),
@@ -193,11 +232,13 @@ class PeopleTransactionCard extends StatelessWidget {
       cardWidget = Container(
         margin: EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+          color: isDimmed
+              ? Theme.of(context).cardColor.withOpacity(0.6)
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDimmed ? 0.02 : 0.05),
               blurRadius: 10,
               offset: Offset(0, 5),
             ),
@@ -219,7 +260,9 @@ class PeopleTransactionCard extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: amountColor.withOpacity(0.1),
+                          color: isDimmed
+                              ? amountColor.withOpacity(0.05)
+                              : amountColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -238,6 +281,7 @@ class PeopleTransactionCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: isDimmed ? Colors.grey[500] : null,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -248,28 +292,37 @@ class PeopleTransactionCard extends StatelessWidget {
                                 Icon(
                                   Icons.calendar_today,
                                   size: 14,
-                                  color: Colors.grey[600],
+                                  color: isDimmed
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                                 SizedBox(width: 4),
                                 Text(
                                   DateFormatter.formatDate(transaction.date),
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[600],
+                                    color: isDimmed
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
                                   ),
                                 ),
                                 SizedBox(width: 12),
                                 Icon(
                                   Icons.access_time,
                                   size: 14,
-                                  color: Colors.grey[600],
+                                  color: isDimmed
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  DateFormatter.formatTime(transaction.timestamp),
+                                  DateFormatter.formatTime(
+                                      transaction.timestamp),
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[600],
+                                    color: isDimmed
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
                                   ),
                                 ),
                               ],
@@ -306,13 +359,16 @@ class PeopleTransactionCard extends StatelessWidget {
                           child: Container(
                             padding: EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color:
+                                  Colors.red.withOpacity(isDimmed ? 0.05 : 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(
                               Icons.delete_outline,
                               size: 16,
-                              color: Colors.red,
+                              color: isDimmed
+                                  ? Colors.red.withOpacity(0.4)
+                                  : Colors.red,
                             ),
                           ),
                         ),
@@ -326,7 +382,7 @@ class PeopleTransactionCard extends StatelessWidget {
         ),
       );
     }
-    
+
     // Wrap with separator if needed
     if (showSeparator) {
       return Column(
@@ -336,10 +392,10 @@ class PeopleTransactionCard extends StatelessWidget {
         ],
       );
     }
-    
+
     return cardWidget;
   }
-  
+
   Widget _buildSettlementSeparator(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 16),

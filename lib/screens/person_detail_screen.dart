@@ -38,14 +38,14 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
         _transactions =
             PeopleHiveService.getTransactionsForPerson(widget.personName);
         _balance = PeopleHiveService.getBalanceForPerson(widget.personName);
-        
+
         // Create person summary for sharing
         _personSummary = PersonSummary(
           name: widget.personName,
           totalBalance: _balance,
           transactionCount: _transactions.length,
-          lastTransactionDate: _transactions.isNotEmpty 
-              ? _transactions.first.timestamp 
+          lastTransactionDate: _transactions.isNotEmpty
+              ? _transactions.first.timestamp
               : DateTime.now(),
         );
       });
@@ -205,8 +205,9 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
   }
 
   Widget _buildTransactionsList() {
-    final settlementPoints = TransactionAnalysisService.findSettlementPoints(_transactions);
-    
+    final settlementPoints =
+        TransactionAnalysisService.findSettlementPoints(_transactions);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -250,9 +251,10 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
             itemBuilder: (context, index) {
               final transaction = _transactions[index];
               final showSeparator = settlementPoints.contains(index);
-              
+
               return PeopleTransactionCard(
                 transaction: transaction,
+                currentIndex: index, // Added currentIndex parameter
                 allTransactions: _transactions,
                 showSeparator: showSeparator,
                 onEdit: () => _editTransaction(transaction),
