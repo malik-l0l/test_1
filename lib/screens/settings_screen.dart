@@ -59,8 +59,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildThemeSelector(),
             SizedBox(height: 24),
             _buildAutoFocusToggle(),
-            SizedBox(height: 24),
-            _buildCardThemeSelector(),
             SizedBox(height: 32),
             
             _buildSaveButton(),
@@ -383,102 +381,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildCardThemeSelector() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      padding: EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.style_outlined, color: Theme.of(context).primaryColor),
-              SizedBox(width: 12),
-              Text(
-                'Card Theme',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-          Column(
-            children: [
-              _buildCardThemeOption('theme1', 'Theme 1 (Colored Cards)', Icons.palette),
-              SizedBox(height: 12),
-              _buildCardThemeOption('theme2', 'Theme 2 (Classic Cards)', Icons.view_agenda),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCardThemeOption(String value, String name, IconData icon) {
-    final isSelected = _settings.cardTheme == value;
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _settings.cardTheme = value;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
-              : Colors.grey.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected 
-                ? Theme.of(context).primaryColor
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected 
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey[600],
-            ),
-            SizedBox(width: 12),
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: isSelected 
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[700],
-              ),
-            ),
-            Spacer(),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: Theme.of(context).primaryColor,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildSaveButton() {
     return SizedBox(

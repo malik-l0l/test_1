@@ -20,9 +20,8 @@ This document outlines all tasks, features, and fixes in the development of your
 - ✅ Removed Net Balance, added “You owe” and “Owes you” in People Manager
 - ✅ Replaced income card "+" prefix with clean numbers
 - ✅ Replaced "Pay back"/"Collect from" card messages with simpler entries
-- ✅ Improved people manager icons and “settled” card design
-- ✅ Theme 1: Applied themed cards across the app (income: green, expense: red, settled: gray)
-- ✅ Implemented Theme 1/Theme 2 toggle in Settings with persistence
+- ✅ Improved people manager icons and "settled" card design
+- ✅ Applied colored card theme across the app (income: green, expense: red, settled: gray)
 - ✅ Home screen: Placed FABs side by side with improved layout
 - ✅ Date format changed to `dd-mm-yy HH:MM AM/PM`
 - ✅ Infinitely scrollable Recent Transactions list with fade-in/out FAB animations

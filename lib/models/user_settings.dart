@@ -16,14 +16,10 @@ class UserSettings extends HiveObject {
   @HiveField(3, defaultValue: false)
   bool autoFocusAmount;
 
-  @HiveField(4, defaultValue: 'theme1')
-  String cardTheme;
-
   UserSettings({
     this.name = '',
     this.currency = '₹',
     this.theme = 'system',
     this.autoFocusAmount = false,
-    this.cardTheme = 'theme1',
   });
 }

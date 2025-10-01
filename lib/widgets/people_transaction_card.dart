@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/people_transaction.dart';
 import '../utils/date_formatter.dart';
-import '../services/hive_service.dart';
 import '../services/transaction_analysis_service.dart';
 
 class PeopleTransactionCard extends StatelessWidget {
@@ -41,7 +40,6 @@ class PeopleTransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = HiveService.getUserSettings();
     final isDimmed = _isTransactionDimmed;
 
     // Get color and icon based on transaction type
@@ -83,308 +81,150 @@ class PeopleTransactionCard extends StatelessWidget {
       amountColor = amountColor.withOpacity(0.4);
     }
 
-    Widget cardWidget;
-
-    if (settings.cardTheme == 'theme1') {
-      cardWidget = Container(
-        margin: EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
+    Widget cardWidget = Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDimmed
+            ? amountColor.withOpacity(0.02)
+            : amountColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
           color: isDimmed
-              ? amountColor.withOpacity(0.02)
-              : amountColor.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDimmed
-                ? amountColor.withOpacity(0.1)
-                : amountColor.withOpacity(0.2),
-            width: 1,
-          ),
+              ? amountColor.withOpacity(0.1)
+              : amountColor.withOpacity(0.2),
+          width: 1,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onEdit,
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isDimmed
-                          ? amountColor.withOpacity(0.05)
-                          : amountColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      iconData,
-                      color: amountColor,
-                      size: 24,
-                    ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onEdit,
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isDimmed
+                        ? amountColor.withOpacity(0.05)
+                        : amountColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          transaction.reason,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDimmed ? Colors.grey[500] : null,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: isDimmed
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              DateFormatter.formatDate(transaction.date),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDimmed
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Icon(
-                              Icons.access_time,
-                              size: 14,
-                              color: isDimmed
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              DateFormatter.formatTime(transaction.timestamp),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDimmed
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  child: Icon(
+                    iconData,
+                    color: amountColor,
+                    size: 24,
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '₹${transaction.amount.toStringAsFixed(2)}',
+                        transaction.reason,
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: amountColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDimmed ? Colors.grey[500] : null,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 4),
-                      Text(
-                        actionText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: amountColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (onDelete != null) ...[
-                    SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: onDelete,
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(isDimmed ? 0.05 : 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          size: 16,
-                          color: isDimmed
-                              ? Colors.red.withOpacity(0.4)
-                              : Colors.red,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      // Theme 2 - Original design
-      cardWidget = Container(
-        margin: EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: isDimmed
-              ? Theme.of(context).cardColor.withOpacity(0.6)
-              : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDimmed ? 0.02 : 0.05),
-              blurRadius: 10,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onEdit,
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: isDimmed
-                              ? amountColor.withOpacity(0.05)
-                              : amountColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          iconData,
-                          color: amountColor,
-                          size: 24,
-                        ),
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              transaction.reason,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: isDimmed ? Colors.grey[500] : null,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  size: 14,
-                                  color: isDimmed
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  DateFormatter.formatDate(transaction.date),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDimmed
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
-                                  ),
-                                ),
-                                SizedBox(width: 12),
-                                Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: isDimmed
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  DateFormatter.formatTime(
-                                      transaction.timestamp),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDimmed
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      Row(
                         children: [
-                          Text(
-                            '₹${transaction.amount.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: amountColor,
-                            ),
+                          Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: isDimmed
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
                           ),
-                          SizedBox(height: 4),
+                          SizedBox(width: 4),
                           Text(
-                            actionText,
+                            DateFormatter.formatDate(transaction.date),
                             style: TextStyle(
                               fontSize: 12,
-                              color: amountColor,
-                              fontWeight: FontWeight.w500,
+                              color: isDimmed
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: isDimmed
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            DateFormatter.formatTime(transaction.timestamp),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDimmed
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                           ),
                         ],
                       ),
-                      if (onDelete != null) ...[
-                        SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: onDelete,
-                          child: Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color:
-                                  Colors.red.withOpacity(isDimmed ? 0.05 : 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Icon(
-                              Icons.delete_outline,
-                              size: 16,
-                              color: isDimmed
-                                  ? Colors.red.withOpacity(0.4)
-                                  : Colors.red,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₹${transaction.amount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: amountColor,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      actionText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: amountColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                if (onDelete != null) ...[
+                  SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: onDelete,
+                    child: Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(isDimmed ? 0.05 : 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: isDimmed
+                            ? Colors.red.withOpacity(0.4)
+                            : Colors.red,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
 
     // Wrap with separator if needed
     if (showSeparator) {
