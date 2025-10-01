@@ -30,9 +30,12 @@ class PeopleTransactionCard extends StatelessWidget {
     if (settlementPoints.isEmpty) return false;
 
     // Get the last (most recent) settlement point
-    final lastSettlementIndex = settlementPoints.first;
+    // Since we add settlements as we find them from old to new,
+    // the last settlement is the last element in the list
+    final lastSettlementIndex = settlementPoints.last;
 
-    // Dim transactions that are at or below the last settlement point
+    // Dim transactions that are below the last settlement point
+    // (after the settlement index, meaning higher index numbers)
     return currentIndex! > lastSettlementIndex;
   }
 

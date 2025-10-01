@@ -106,8 +106,9 @@ class _ShareModalState extends State<ShareModal> with TickerProviderStateMixin {
       if (settlementPoints.isEmpty) {
         return [];
       }
-      final lastSettlementIndex = settlementPoints.first;
-      return widget.allTransactions.sublist(lastSettlementIndex);
+      // Get the last (most recent) settlement point
+      final lastSettlementIndex = settlementPoints.last;
+      return widget.allTransactions.sublist(lastSettlementIndex + 1);
     }
 
     if (_selectedTransactionCount >= widget.allTransactions.length) {
