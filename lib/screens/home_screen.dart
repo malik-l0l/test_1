@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/hive_service.dart';
 import '../services/people_hive_service.dart';
+import '../services/greeting_service.dart';
 import '../models/transaction.dart';
 import '../models/daily_transaction_group.dart';
 import '../widgets/balance_card.dart';
@@ -146,7 +147,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildModernAppBar(settings) {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
@@ -165,29 +166,31 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _getGreeting(),
+                  GreetingService.getSessionGreeting(),
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w300,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
                     color: Colors.grey[600],
                   ),
                 ),
                 if (settings.name.isNotEmpty)
-                  Text(
-                    settings.name,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Text(
+                      settings.name,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],
             ),
           ),
-          // Monthly Summary Button
           Container(
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -197,11 +200,13 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ],
             ),
             child: IconButton(
+              padding: EdgeInsets.all(10),
+              constraints: BoxConstraints(minWidth: 42, minHeight: 42),
               onPressed: _navigateToSummary,
               icon: Icon(
-                Icons.bar_chart_rounded,
+                Icons.analytics_outlined,
                 color: Colors.blue,
-                size: 24,
+                size: 22,
               ),
               tooltip: 'Monthly Summary',
             ),
@@ -209,30 +214,6 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ],
       ),
     );
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    final greetings = {
-      'morning': ['Good morning!', 'Fresh start', 'Rise and shine'],
-      'afternoon': ['Good afternoon!', 'Hope you\'re well', 'Midday boost!'],
-      'evening': ['Good evening', 'Winding down', 'Evening calm'],
-      'night': ['Welcome back', 'Time to relax', 'Peaceful night'],
-    };
-
-    List<String> timeBasedGreetings;
-    if (hour < 12) {
-      timeBasedGreetings = greetings['morning']!;
-    } else if (hour < 17) {
-      timeBasedGreetings = greetings['afternoon']!;
-    } else if (hour < 20) {
-      timeBasedGreetings = greetings['evening']!;
-    } else {
-      timeBasedGreetings = greetings['night']!;
-    }
-
-    return timeBasedGreetings[
-        DateTime.now().second % timeBasedGreetings.length];
   }
 
   Widget _buildGroupedTransactionsList(String currency) {
