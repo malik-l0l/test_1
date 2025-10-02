@@ -36,9 +36,19 @@ class _BalanceCardState extends State<BalanceCard>
   double _minY = 0;
   double _maxY = 0;
 
+  late DateTime _currentDate;
+  late DateTime _currentWeekStart;
+  late DateTime _currentMonth;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize dates
+    final now = DateTime.now();
+    _currentDate = now;
+    _currentMonth = DateTime(now.year, now.month);
+    _currentWeekStart = now.subtract(Duration(days: now.weekday % 7));
 
     _chartAnimationController = AnimationController(
       duration: Duration(milliseconds: 800),
@@ -102,19 +112,18 @@ class _BalanceCardState extends State<BalanceCard>
   }
 
   void _generateChartData() {
-    final now = DateTime.now();
     _dailyBalances = [];
     _chartData = [];
 
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        _generateDayData(now);
+        _generateDayData(_currentDate);
         break;
       case TimePeriod.week:
-        _generateWeekData(now);
+        _generateWeekData(_currentWeekStart);
         break;
       case TimePeriod.month:
-        _generateMonthData(now);
+        _generateMonthData(_currentMonth);
         break;
     }
 
@@ -138,59 +147,62 @@ class _BalanceCardState extends State<BalanceCard>
     }
   }
 
-  void _generateDayData(DateTime now) {
-    // Get today's transactions
-    final todayTransactions = HiveService.getMonthlyTransactions(now)
+  void _generateDayData(DateTime targetDate) {
+    final allTransactions = HiveService.getAllTransactions();
+
+    // Get transactions for the target day
+    final dayTransactions = allTransactions
         .where((t) =>
-            t.date.year == now.year &&
-            t.date.month == now.month &&
-            t.date.day == now.day)
+            t.date.year == targetDate.year &&
+            t.date.month == targetDate.month &&
+            t.date.day == targetDate.day)
         .toList();
 
     // Sort transactions by time
-    todayTransactions.sort((a, b) => a.date.compareTo(b.date));
+    dayTransactions.sort((a, b) => a.date.compareTo(b.date));
 
-    double runningBalance = widget.balance;
-
-    // Work backwards to get starting balance
-    for (final transaction in todayTransactions.reversed) {
-      runningBalance -= transaction.amount;
+    if (dayTransactions.isEmpty) {
+      return;
     }
 
-    // Create hourly data points
-    for (int hour = 0; hour <= 23; hour++) {
-      final hourTransactions =
-          todayTransactions.where((t) => t.date.hour <= hour).toList();
+    // Calculate starting balance for this day
+    double startBalance = widget.balance;
 
-      double hourBalance = runningBalance;
-      double hourCredit = 0;
-      double hourExpense = 0;
-
-      for (final transaction in hourTransactions) {
-        hourBalance += transaction.amount;
-        if (transaction.amount > 0) {
-          hourCredit += transaction.amount;
-        } else {
-          hourExpense += transaction.amount.abs();
-        }
+    // Subtract all transactions that happened after this day
+    for (final transaction in allTransactions) {
+      if (transaction.date.isAfter(DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59, 59))) {
+        startBalance -= transaction.amount;
       }
+    }
 
-      final hourDate = DateTime(now.year, now.month, now.day, hour);
-      _dailyBalances
-          .add(DailyBalance(hourDate, hourBalance, hourCredit, hourExpense));
-      _chartData.add(FlSpot(hour.toDouble(), hourBalance));
+    double runningBalance = startBalance;
+
+    // Create data points only for transaction times
+    for (int i = 0; i < dayTransactions.length; i++) {
+      final transaction = dayTransactions[i];
+      runningBalance += transaction.amount;
+
+      final timeValue = transaction.date.hour + (transaction.date.minute / 60.0);
+
+      _dailyBalances.add(DailyBalance(
+        transaction.date,
+        runningBalance,
+        transaction.amount > 0 ? transaction.amount : 0,
+        transaction.amount < 0 ? transaction.amount.abs() : 0,
+      ));
+
+      _chartData.add(FlSpot(timeValue, runningBalance));
     }
   }
 
-  void _generateWeekData(DateTime now) {
-    // Get start of current week (Sunday)
-    final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
+  void _generateWeekData(DateTime weekStart) {
+    final allTransactions = HiveService.getAllTransactions();
 
     for (int i = 0; i < 7; i++) {
-      final currentDate = startOfWeek.add(Duration(days: i));
+      final currentDate = weekStart.add(Duration(days: i));
 
       // Get transactions for this specific day
-      final dayTransactions = HiveService.getMonthlyTransactions(currentDate)
+      final dayTransactions = allTransactions
           .where((t) =>
               t.date.year == currentDate.year &&
               t.date.month == currentDate.month &&
@@ -209,13 +221,12 @@ class _BalanceCardState extends State<BalanceCard>
         }
       }
 
-      // Calculate balance for this day
+      // Calculate balance at the end of this day
       double dayBalance = widget.balance;
 
       // Subtract all transactions that happened after this day
-      final allTransactions = HiveService.getMonthlyTransactions(now);
       for (final transaction in allTransactions) {
-        if (transaction.date.isAfter(currentDate.add(Duration(days: 1)))) {
+        if (transaction.date.isAfter(DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59))) {
           dayBalance -= transaction.amount;
         }
       }
@@ -226,20 +237,24 @@ class _BalanceCardState extends State<BalanceCard>
     }
   }
 
-  void _generateMonthData(DateTime now) {
-    // Get all transactions for this month
-    final monthlyTransactions = HiveService.getMonthlyTransactions(now);
+  void _generateMonthData(DateTime targetMonth) {
+    final allTransactions = HiveService.getAllTransactions();
 
-    // Calculate daily balances, credits, and expenses
-    double runningBalance = widget.balance;
+    // Get transactions for this month
+    final monthlyTransactions = allTransactions
+        .where((t) => t.date.year == targetMonth.year && t.date.month == targetMonth.month)
+        .toList();
 
-    // Work backwards from today to calculate historical balances
-    for (int day = now.day; day >= 1; day--) {
-      final currentDate = DateTime(now.year, now.month, day);
+    final daysInMonth = DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
+
+    // Calculate daily balances
+    for (int day = 1; day <= daysInMonth; day++) {
+      final currentDate = DateTime(targetMonth.year, targetMonth.month, day);
 
       // Get transactions for this specific day
-      final dayTransactions =
-          monthlyTransactions.where((t) => t.date.day == day).toList();
+      final dayTransactions = monthlyTransactions
+          .where((t) => t.date.day == day)
+          .toList();
 
       // Calculate daily credit and expense
       double dailyCredit = 0;
@@ -253,37 +268,19 @@ class _BalanceCardState extends State<BalanceCard>
         }
       }
 
-      // If this is today, use current balance
-      if (day == now.day) {
-        _dailyBalances.insert(
-            0,
-            DailyBalance(
-                currentDate, runningBalance, dailyCredit, dailyExpense));
-      } else {
-        // Subtract transactions that happened after this day
-        final futureTransactions = monthlyTransactions
-            .where((t) => t.date.isAfter(currentDate))
-            .toList();
+      // Calculate balance at the end of this day
+      double dayBalance = widget.balance;
 
-        double historicalBalance = widget.balance;
-        for (final transaction in futureTransactions) {
-          historicalBalance -= transaction.amount;
+      // Subtract all transactions that happened after this day
+      for (final transaction in allTransactions) {
+        if (transaction.date.isAfter(DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59))) {
+          dayBalance -= transaction.amount;
         }
-
-        _dailyBalances.insert(
-            0,
-            DailyBalance(
-                currentDate, historicalBalance, dailyCredit, dailyExpense));
-        runningBalance = historicalBalance;
       }
-    }
 
-    // Convert to chart data
-    for (int i = 0; i < _dailyBalances.length; i++) {
-      _chartData.add(FlSpot(
-        _dailyBalances[i].date.day.toDouble(),
-        _dailyBalances[i].balance,
-      ));
+      _dailyBalances.add(
+          DailyBalance(currentDate, dayBalance, dailyCredit, dailyExpense));
+      _chartData.add(FlSpot(day.toDouble(), dayBalance));
     }
   }
 
@@ -304,7 +301,60 @@ class _BalanceCardState extends State<BalanceCard>
   void _onPeriodChanged(TimePeriod period) {
     setState(() {
       _selectedPeriod = period;
+
+      // Reset to current date/week/month when changing period
+      final now = DateTime.now();
+      _currentDate = now;
+      _currentMonth = DateTime(now.year, now.month);
+      _currentWeekStart = now.subtract(Duration(days: now.weekday % 7));
     });
+    _generateChartData();
+  }
+
+  void _onSwipe(DragEndDetails details) {
+    if (!_showChart) return;
+
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 500) return;
+
+    setState(() {
+      if (velocity > 0) {
+        // Swipe right - go to previous period
+        _navigateToPrevious();
+      } else {
+        // Swipe left - go to next period
+        _navigateToNext();
+      }
+    });
+  }
+
+  void _navigateToPrevious() {
+    switch (_selectedPeriod) {
+      case TimePeriod.day:
+        _currentDate = _currentDate.subtract(Duration(days: 1));
+        break;
+      case TimePeriod.week:
+        _currentWeekStart = _currentWeekStart.subtract(Duration(days: 7));
+        break;
+      case TimePeriod.month:
+        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+        break;
+    }
+    _generateChartData();
+  }
+
+  void _navigateToNext() {
+    switch (_selectedPeriod) {
+      case TimePeriod.day:
+        _currentDate = _currentDate.add(Duration(days: 1));
+        break;
+      case TimePeriod.week:
+        _currentWeekStart = _currentWeekStart.add(Duration(days: 7));
+        break;
+      case TimePeriod.month:
+        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+        break;
+    }
     _generateChartData();
   }
 
@@ -312,6 +362,7 @@ class _BalanceCardState extends State<BalanceCard>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _toggleChart,
+      onHorizontalDragEnd: _onSwipe,
       child: AnimatedContainer(
         duration: Duration(milliseconds: 600),
         curve: Curves.easeInOutCubic,
@@ -656,7 +707,7 @@ class _BalanceCardState extends State<BalanceCard>
   String _getTooltipDateText(DateTime date) {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return '${date.hour.toString().padLeft(2, '0')}:00';
+        return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
       case TimePeriod.week:
         return DateFormatter.formatShortDate(date);
       case TimePeriod.month:
@@ -667,11 +718,24 @@ class _BalanceCardState extends State<BalanceCard>
   DailyBalance _getDailyBalanceForSpot(LineBarSpot barSpot) {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        final hour = barSpot.x.toInt();
-        return _dailyBalances.firstWhere(
-          (db) => db.date.hour == hour,
-          orElse: () => DailyBalance(DateTime.now(), barSpot.y, 0, 0),
-        );
+        // Find the closest transaction time to the tapped point
+        if (_dailyBalances.isEmpty) {
+          return DailyBalance(DateTime.now(), barSpot.y, 0, 0);
+        }
+
+        DailyBalance? closest;
+        double minDiff = double.infinity;
+
+        for (final db in _dailyBalances) {
+          final timeValue = db.date.hour + (db.date.minute / 60.0);
+          final diff = (timeValue - barSpot.x).abs();
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = db;
+          }
+        }
+
+        return closest ?? DailyBalance(DateTime.now(), barSpot.y, 0, 0);
       case TimePeriod.week:
         final dayIndex = barSpot.x.toInt();
         if (dayIndex < _dailyBalances.length) {
@@ -690,14 +754,12 @@ class _BalanceCardState extends State<BalanceCard>
   String _getSubtitle() {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return DateFormatter.formatShortDate(DateTime.now());
+        return DateFormatter.formatShortDate(_currentDate);
       case TimePeriod.week:
-        final now = DateTime.now();
-        final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
-        final endOfWeek = startOfWeek.add(Duration(days: 6));
-        return '${DateFormatter.formatShortDate(startOfWeek)} - ${DateFormatter.formatShortDate(endOfWeek)}';
+        final endOfWeek = _currentWeekStart.add(Duration(days: 6));
+        return '${DateFormatter.formatShortDate(_currentWeekStart)} - ${DateFormatter.formatShortDate(endOfWeek)}';
       case TimePeriod.month:
-        return DateFormatter.formatMonthYear(DateTime.now());
+        return DateFormatter.formatMonthYear(_currentMonth);
     }
   }
 
@@ -715,7 +777,8 @@ class _BalanceCardState extends State<BalanceCard>
   String _getBottomLabel(double value) {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return '${value.toInt()}h';
+        final hour = value.toInt();
+        return hour < 24 ? '${hour}h' : '';
       case TimePeriod.week:
         final days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         final index = value.toInt();
@@ -739,11 +802,11 @@ class _BalanceCardState extends State<BalanceCard>
   double _getMaxX() {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return 23;
+        return 24;
       case TimePeriod.week:
         return 6;
       case TimePeriod.month:
-        return DateTime.now().day.toDouble();
+        return DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day.toDouble();
     }
   }
 
