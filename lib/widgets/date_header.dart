@@ -16,7 +16,7 @@ class DateHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(top: 24, bottom: 12),
+      margin: EdgeInsets.only(top: 8, bottom: 12),
       child: Row(
         children: [
           // Date text

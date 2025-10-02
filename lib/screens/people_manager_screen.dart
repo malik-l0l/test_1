@@ -11,10 +11,10 @@ class PeopleManagerScreen extends StatefulWidget {
   const PeopleManagerScreen({Key? key}) : super(key: key);
 
   @override
-  _PeopleManagerScreenState createState() => _PeopleManagerScreenState();
+  PeopleManagerScreenState createState() => PeopleManagerScreenState();
 }
 
-class _PeopleManagerScreenState extends State<PeopleManagerScreen> {
+class PeopleManagerScreenState extends State<PeopleManagerScreen> {
   List<PersonSummary> _activePeople = [];
   List<PersonSummary> _settledPeople = [];
   double _youOwe = 0.0;

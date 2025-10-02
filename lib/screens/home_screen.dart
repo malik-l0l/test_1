@@ -117,7 +117,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             balance: _balance,
                             currency: settings.currency,
                           ),
-                          SizedBox(height: 32),
+                          SizedBox(height: 16),
                         ],
                       ),
                     ),

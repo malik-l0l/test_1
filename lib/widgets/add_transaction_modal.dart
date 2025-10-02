@@ -312,7 +312,8 @@ class _AddTransactionModalState extends State<AddTransactionModal>
                               GestureDetector(
                                 onTap: _selectDate,
                                 child: Container(
-                                  padding: EdgeInsets.all(16),
+                                  height: 56,
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
                                   decoration: BoxDecoration(
                                     color: Theme.of(context).cardColor,
                                     borderRadius: BorderRadius.circular(16),

@@ -28,6 +28,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
   // Keys for accessing child screen methods
   final GlobalKey<HomeScreenState> _homeScreenKey =
       GlobalKey<HomeScreenState>();
+  final GlobalKey<PeopleManagerScreenState> _peopleScreenKey =
+      GlobalKey<PeopleManagerScreenState>();
 
   @override
   void initState() {
@@ -152,7 +154,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         },
         children: [
           HomeScreen(key: _homeScreenKey),
-          PeopleManagerScreen(),
+          PeopleManagerScreen(key: _peopleScreenKey),
           SettingsScreen(),
         ],
       ),
@@ -456,6 +458,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           await PeopleHiveService.addPeopleTransaction(transaction);
           // Refresh home screen data
           _homeScreenKey.currentState?.refreshData();
+          // Refresh people screen data
+          _peopleScreenKey.currentState?.refreshData();
           CustomSnackBar.show(context, 'People transaction added successfully!',
               SnackBarType.success);
         },
