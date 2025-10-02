@@ -148,10 +148,8 @@ class _BalanceCardState extends State<BalanceCard>
   }
 
   void _generateDayData(DateTime targetDate) {
-    final allTransactions = HiveService.getAllTransactions();
-
-    // Get transactions for the target day
-    final dayTransactions = allTransactions
+    // Get today's transactions
+    final todayTransactions = HiveService.getMonthlyTransactions(targetDate)
         .where((t) =>
             t.date.year == targetDate.year &&
             t.date.month == targetDate.month &&
@@ -159,40 +157,68 @@ class _BalanceCardState extends State<BalanceCard>
         .toList();
 
     // Sort transactions by time
-    dayTransactions.sort((a, b) => a.date.compareTo(b.date));
+    todayTransactions.sort((a, b) => a.date.compareTo(b.date));
 
-    if (dayTransactions.isEmpty) {
+    if (todayTransactions.isEmpty) {
       return;
     }
 
-    // Calculate starting balance for this day
-    double startBalance = widget.balance;
+    double runningBalance = widget.balance;
 
-    // Subtract all transactions that happened after this day
-    for (final transaction in allTransactions) {
-      if (transaction.date.isAfter(DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59, 59))) {
-        startBalance -= transaction.amount;
-      }
+    // Work backwards to get starting balance (balance at start of day)
+    for (final transaction in todayTransactions.reversed) {
+      runningBalance -= transaction.amount;
     }
 
-    double runningBalance = startBalance;
+    // Add starting point at beginning of day
+    final startHour = 0;
+    _dailyBalances.add(DailyBalance(
+      DateTime(targetDate.year, targetDate.month, targetDate.day, startHour),
+      runningBalance,
+      0,
+      0,
+    ));
+    _chartData.add(FlSpot(startHour.toDouble(), runningBalance));
 
-    // Create data points only for transaction times
-    for (int i = 0; i < dayTransactions.length; i++) {
-      final transaction = dayTransactions[i];
+    // Add data point for each transaction with accumulated values
+    for (int i = 0; i < todayTransactions.length; i++) {
+      final transaction = todayTransactions[i];
       runningBalance += transaction.amount;
 
-      final timeValue = transaction.date.hour + (transaction.date.minute / 60.0);
+      // Calculate accumulated credit/expense up to this transaction
+      double accumulatedCredit = 0;
+      double accumulatedExpense = 0;
+
+      for (int j = 0; j <= i; j++) {
+        if (todayTransactions[j].amount > 0) {
+          accumulatedCredit += todayTransactions[j].amount;
+        } else {
+          accumulatedExpense += todayTransactions[j].amount.abs();
+        }
+      }
+
+      final timeValue =
+          transaction.date.hour + (transaction.date.minute / 60.0);
 
       _dailyBalances.add(DailyBalance(
         transaction.date,
         runningBalance,
-        transaction.amount > 0 ? transaction.amount : 0,
-        transaction.amount < 0 ? transaction.amount.abs() : 0,
+        accumulatedCredit,
+        accumulatedExpense,
       ));
 
       _chartData.add(FlSpot(timeValue, runningBalance));
     }
+
+    // Add end point at end of day (current balance)
+    final endHour = 23.99;
+    _dailyBalances.add(DailyBalance(
+      DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59),
+      runningBalance,
+      _dailyBalances.last.credit,
+      _dailyBalances.last.expense,
+    ));
+    _chartData.add(FlSpot(endHour, runningBalance));
   }
 
   void _generateWeekData(DateTime weekStart) {
@@ -226,7 +252,8 @@ class _BalanceCardState extends State<BalanceCard>
 
       // Subtract all transactions that happened after this day
       for (final transaction in allTransactions) {
-        if (transaction.date.isAfter(DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59))) {
+        if (transaction.date.isAfter(DateTime(currentDate.year,
+            currentDate.month, currentDate.day, 23, 59, 59))) {
           dayBalance -= transaction.amount;
         }
       }
@@ -242,19 +269,21 @@ class _BalanceCardState extends State<BalanceCard>
 
     // Get transactions for this month
     final monthlyTransactions = allTransactions
-        .where((t) => t.date.year == targetMonth.year && t.date.month == targetMonth.month)
+        .where((t) =>
+            t.date.year == targetMonth.year &&
+            t.date.month == targetMonth.month)
         .toList();
 
-    final daysInMonth = DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
+    final daysInMonth =
+        DateTime(targetMonth.year, targetMonth.month + 1, 0).day;
 
     // Calculate daily balances
     for (int day = 1; day <= daysInMonth; day++) {
       final currentDate = DateTime(targetMonth.year, targetMonth.month, day);
 
       // Get transactions for this specific day
-      final dayTransactions = monthlyTransactions
-          .where((t) => t.date.day == day)
-          .toList();
+      final dayTransactions =
+          monthlyTransactions.where((t) => t.date.day == day).toList();
 
       // Calculate daily credit and expense
       double dailyCredit = 0;
@@ -273,7 +302,8 @@ class _BalanceCardState extends State<BalanceCard>
 
       // Subtract all transactions that happened after this day
       for (final transaction in allTransactions) {
-        if (transaction.date.isAfter(DateTime(currentDate.year, currentDate.month, currentDate.day, 23, 59, 59))) {
+        if (transaction.date.isAfter(DateTime(currentDate.year,
+            currentDate.month, currentDate.day, 23, 59, 59))) {
           dayBalance -= transaction.amount;
         }
       }
@@ -707,7 +737,11 @@ class _BalanceCardState extends State<BalanceCard>
   String _getTooltipDateText(DateTime date) {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+        final hour = date.hour;
+        final minute = date.minute;
+        final period = hour >= 12 ? 'PM' : 'AM';
+        final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+        return '${hour12.toString()}:${minute.toString().padLeft(2, '0')} $period';
       case TimePeriod.week:
         return DateFormatter.formatShortDate(date);
       case TimePeriod.month:
@@ -718,7 +752,7 @@ class _BalanceCardState extends State<BalanceCard>
   DailyBalance _getDailyBalanceForSpot(LineBarSpot barSpot) {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        // Find the closest transaction time to the tapped point
+        // Find the closest data point to the tapped spot
         if (_dailyBalances.isEmpty) {
           return DailyBalance(DateTime.now(), barSpot.y, 0, 0);
         }
@@ -766,7 +800,7 @@ class _BalanceCardState extends State<BalanceCard>
   double _getBottomInterval() {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return 4; // Every 4 hours
+        return 6; // Every 6 hours (0, 6, 12, 18, 24)
       case TimePeriod.week:
         return 1; // Every day
       case TimePeriod.month:
@@ -802,11 +836,13 @@ class _BalanceCardState extends State<BalanceCard>
   double _getMaxX() {
     switch (_selectedPeriod) {
       case TimePeriod.day:
-        return 24;
+        return 23;
       case TimePeriod.week:
         return 6;
       case TimePeriod.month:
-        return DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day.toDouble();
+        return DateTime(_currentMonth.year, _currentMonth.month + 1, 0)
+            .day
+            .toDouble();
     }
   }
 
