@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import 'models/transaction.dart';
 import 'models/user_settings.dart';
 import 'models/people_transaction.dart';
 import 'models/person_contact.dart';
+import 'models/app_state.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'themes/app_theme.dart';
@@ -27,7 +29,16 @@ void main() async {
   await PeopleHiveService.init();
   await ContactService.init();
   
-  runApp(MoneyManagerApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) {
+        final appState = AppState();
+        appState.loadFromHive();
+        return appState;
+      },
+      child: MoneyManagerApp(),
+    ),
+  );
 }
 
 class MoneyManagerApp extends StatelessWidget {
@@ -35,17 +46,16 @@ class MoneyManagerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: HiveService.userSettingsBox.listenable(),
-      builder: (context, box, child) {
-        final settings = HiveService.getUserSettings();
-        
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final settings = appState.userSettings;
+
         return MaterialApp(
           title: 'Money Manager',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: _getThemeMode(settings.theme),
-          home: settings.name.isEmpty ? WelcomeScreen() : MainNavigationScreen(),
+          home: settings.name.isEmpty ? const WelcomeScreen() : const MainNavigationScreen(),
           debugShowCheckedModeBanner: false,
         );
       },

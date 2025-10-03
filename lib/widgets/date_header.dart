@@ -16,10 +16,9 @@ class DateHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(top: 8, bottom: 12),
+      margin: const EdgeInsets.only(top: 8, bottom: 12),
       child: Row(
         children: [
-          // Date text
           Expanded(
             child: Text(
               _formatRelativeDate(date),
@@ -30,14 +29,11 @@ class DateHeader extends StatelessWidget {
               ),
             ),
           ),
-
-          // Daily summary badges
           Row(
             children: [
-              // Income badge
               if (totalIncome > 0) ...[
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -49,15 +45,15 @@ class DateHeader extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.arrow_upward,
                         color: Colors.green,
                         size: 12,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         '₹${totalIncome.toStringAsFixed(0)}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.green,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -66,13 +62,11 @@ class DateHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
               ],
-
-              // Expenses badge
               if (totalExpenses > 0) ...[
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -84,15 +78,15 @@ class DateHeader extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.arrow_downward,
                         color: Colors.red,
                         size: 12,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
                         '₹${totalExpenses.toStringAsFixed(0)}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.red,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import '../services/hive_service.dart';
 import '../models/transaction.dart';
+import '../models/app_state.dart';
 import '../utils/date_formatter.dart';
 
 enum TimePeriod { day, week, month }
@@ -39,6 +41,9 @@ class _BalanceCardState extends State<BalanceCard>
   late DateTime _currentDate;
   late DateTime _currentWeekStart;
   late DateTime _currentMonth;
+
+  double? _lastBalance;
+  String? _lastCacheKey;
 
   @override
   void initState() {
@@ -98,9 +103,13 @@ class _BalanceCardState extends State<BalanceCard>
   @override
   void didUpdateWidget(BalanceCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Regenerate chart data when balance changes (real-time updates)
-    if (oldWidget.balance != widget.balance) {
-      _generateChartData();
+    if (oldWidget.balance != widget.balance && _showChart) {
+      final cacheKey = _getCacheKey();
+      if (_lastCacheKey != cacheKey || _lastBalance != widget.balance) {
+        _generateChartData();
+        _lastBalance = widget.balance;
+        _lastCacheKey = cacheKey;
+      }
     }
   }
 
@@ -111,7 +120,25 @@ class _BalanceCardState extends State<BalanceCard>
     super.dispose();
   }
 
+  String _getCacheKey() {
+    switch (_selectedPeriod) {
+      case TimePeriod.day:
+        return 'day_${_currentDate.year}_${_currentDate.month}_${_currentDate.day}';
+      case TimePeriod.week:
+        return 'week_${_currentWeekStart.millisecondsSinceEpoch}';
+      case TimePeriod.month:
+        return 'month_${_currentMonth.year}_${_currentMonth.month}';
+    }
+  }
+
   void _generateChartData() {
+    final cacheKey = _getCacheKey();
+    if (_lastCacheKey == cacheKey &&
+        _lastBalance == widget.balance &&
+        _chartData.isNotEmpty) {
+      return;
+    }
+
     _dailyBalances = [];
     _chartData = [];
 
@@ -329,10 +356,12 @@ class _BalanceCardState extends State<BalanceCard>
   }
 
   void _onPeriodChanged(TimePeriod period) {
+    if (_selectedPeriod == period) return;
+
     setState(() {
       _selectedPeriod = period;
+      _lastCacheKey = null;
 
-      // Reset to current date/week/month when changing period
       final now = DateTime.now();
       _currentDate = now;
       _currentMonth = DateTime(now.year, now.month);

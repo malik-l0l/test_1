@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'home_screen.dart';
 import 'people_manager_screen.dart';
 import 'settings_screen.dart';
@@ -7,9 +8,12 @@ import '../widgets/add_transaction_modal.dart';
 import '../widgets/add_people_transaction_modal.dart';
 import '../services/hive_service.dart';
 import '../services/people_hive_service.dart';
+import '../models/app_state.dart';
 import '../widgets/custom_snackbar.dart';
 
 class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
+
   @override
   _MainNavigationScreenState createState() => _MainNavigationScreenState();
 }
@@ -155,7 +159,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         children: [
           HomeScreen(key: _homeScreenKey),
           PeopleManagerScreen(key: _peopleScreenKey),
-          SettingsScreen(),
+          const SettingsScreen(),
         ],
       ),
       bottomNavigationBar: _buildModernBottomNavBar(),
@@ -439,10 +443,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         forceIncome: forceIncome,
         onSave: (transaction) async {
           await HiveService.addTransaction(transaction);
-          // Refresh home screen data
+          final appState = Provider.of<AppState>(context, listen: false);
+          appState.loadFromHive();
           _homeScreenKey.currentState?.refreshData();
-          CustomSnackBar.show(
-              context, 'Transaction added successfully!', SnackBarType.success);
+          if (mounted) {
+            CustomSnackBar.show(
+                context, 'Transaction added successfully!', SnackBarType.success);
+          }
         },
       ),
     );
@@ -456,12 +463,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       builder: (context) => AddPeopleTransactionModal(
         onSave: (transaction) async {
           await PeopleHiveService.addPeopleTransaction(transaction);
-          // Refresh home screen data
+          final appState = Provider.of<AppState>(context, listen: false);
+          appState.loadFromHive();
           _homeScreenKey.currentState?.refreshData();
-          // Refresh people screen data
           _peopleScreenKey.currentState?.refreshData();
-          CustomSnackBar.show(context, 'People transaction added successfully!',
-              SnackBarType.success);
+          if (mounted) {
+            CustomSnackBar.show(context, 'People transaction added successfully!',
+                SnackBarType.success);
+          }
         },
       ),
     );

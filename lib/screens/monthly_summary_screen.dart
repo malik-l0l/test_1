@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/hive_service.dart';
 import '../models/transaction.dart';
 import '../models/daily_transaction_group.dart';
+import '../models/app_state.dart';
 import '../widgets/transaction_card.dart';
 import '../widgets/date_header.dart';
 import '../utils/date_formatter.dart';
@@ -44,8 +46,8 @@ class _MonthlySummaryScreenState extends State<MonthlySummaryScreen> {
   }
 
   void _loadMonthlyData() {
-    final monthlyTransactions =
-        HiveService.getMonthlyTransactions(_selectedMonth);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final monthlyTransactions = appState.getMonthlyTransactions(_selectedMonth);
     setState(() {
       _allGroups =
           DailyTransactionGroup.groupTransactionsByDate(monthlyTransactions);
@@ -82,18 +84,24 @@ class _MonthlySummaryScreenState extends State<MonthlySummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = HiveService.getUserSettings();
-    final monthlyTransactions =
-        HiveService.getMonthlyTransactions(_selectedMonth);
-    HiveService.getMonthlyTransactions(_selectedMonth);
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final settings = appState.userSettings;
+        final totalIncome = appState.getMonthlyIncome(_selectedMonth);
+        final totalExpenses = appState.getMonthlyExpenses(_selectedMonth);
+        final monthlyTransactions = appState.getMonthlyTransactions(_selectedMonth);
 
-    final totalIncome = monthlyTransactions
-        .where((t) => t.amount > 0)
-        .fold(0.0, (sum, t) => sum + t.amount);
+        return _buildScaffold(settings, totalIncome, totalExpenses, monthlyTransactions);
+      },
+    );
+  }
 
-    final totalExpenses = monthlyTransactions
-        .where((t) => t.amount < 0)
-        .fold(0.0, (sum, t) => sum + t.amount.abs());
+  Widget _buildScaffold(
+    settings,
+    double totalIncome,
+    double totalExpenses,
+    List<Transaction> monthlyTransactions,
+  ) {
 
     return Scaffold(
       appBar: AppBar(

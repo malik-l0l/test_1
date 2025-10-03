@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/hive_service.dart';
 import '../models/user_settings.dart';
+import '../models/app_state.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -410,7 +412,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _saveSettings() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Please enter your name'),
           backgroundColor: Colors.red,
         ),
@@ -420,12 +422,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     _settings.name = _nameController.text.trim();
     await HiveService.updateUserSettings(_settings);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Settings saved successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.loadFromHive();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Settings saved successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 }
