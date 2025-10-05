@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
+import android.app.PendingIntent
 
 class HomeWidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(
@@ -22,6 +23,14 @@ class HomeWidgetProvider : HomeWidgetProvider() {
                 setTextViewText(R.id.widget_balance, balance)
                 setTextViewText(R.id.widget_income, income)
                 setTextViewText(R.id.widget_expense, expense)
+
+                val pendingIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    context.packageManager.getLaunchIntentForPackage(context.packageName),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                setOnClickPendingIntent(R.id.widget_balance, pendingIntent)
             }
 
             appWidgetManager.updateAppWidget(widgetId, views)
