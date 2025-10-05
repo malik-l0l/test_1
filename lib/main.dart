@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:home_widget/home_widget.dart';
 import 'models/transaction.dart';
 import 'models/user_settings.dart';
 import 'models/people_transaction.dart';
@@ -12,23 +13,28 @@ import 'themes/app_theme.dart';
 import 'services/hive_service.dart';
 import 'services/people_hive_service.dart';
 import 'services/contact_service.dart';
+import 'services/widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Hive.initFlutter();
-  
+
   // Register adapters
   Hive.registerAdapter(TransactionAdapter());
   Hive.registerAdapter(UserSettingsAdapter());
   Hive.registerAdapter(PeopleTransactionAdapter());
   Hive.registerAdapter(PersonContactAdapter());
-  
+
   // Initialize Hive services
   await HiveService.init();
   await PeopleHiveService.init();
   await ContactService.init();
-  
+
+  // Initialize home widget
+  await HomeWidget.setAppGroupId('com.example.mm');
+  await WidgetService.updateWidget();
+
   runApp(
     ChangeNotifierProvider(
       create: (context) {

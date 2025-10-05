@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/transaction.dart';
 import '../models/user_settings.dart';
 import '../utils/constants.dart';
+import 'widget_service.dart';
 
 class HiveService {
   static late Box<Transaction> _transactionsBox;
@@ -49,10 +50,11 @@ class HiveService {
   // Transaction Management
   static Future<void> addTransaction(Transaction transaction) async {
     await _transactionsBox.put(transaction.id, transaction);
-    
+
     // Update balance
     final currentBalance = getBalance();
     await updateBalance(currentBalance + transaction.amount);
+    await WidgetService.updateWidget();
   }
 
   static List<Transaction> getAllTransactions() {
@@ -64,14 +66,15 @@ class HiveService {
     final allTransactions = getAllTransactions();
     if (index >= 0 && index < allTransactions.length) {
       final oldTransaction = allTransactions[index];
-      
+
       // Update balance (remove old, add new)
       final currentBalance = getBalance();
       final newBalance = currentBalance - oldTransaction.amount + transaction.amount;
       await updateBalance(newBalance);
-      
+
       // Update transaction
       await _transactionsBox.put(transaction.id, transaction);
+      await WidgetService.updateWidget();
     }
   }
 
@@ -79,13 +82,14 @@ class HiveService {
     final allTransactions = getAllTransactions();
     if (index >= 0 && index < allTransactions.length) {
       final transaction = allTransactions[index];
-      
+
       // Update balance
       final currentBalance = getBalance();
       await updateBalance(currentBalance - transaction.amount);
-      
+
       // Delete transaction
       await _transactionsBox.delete(transaction.id);
+      await WidgetService.updateWidget();
     }
   }
 
@@ -96,9 +100,10 @@ class HiveService {
       // Update balance
       final currentBalance = getBalance();
       await updateBalance(currentBalance - transaction.amount);
-      
+
       // Delete transaction
       await _transactionsBox.delete(id);
+      await WidgetService.updateWidget();
     }
   }
 

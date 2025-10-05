@@ -3,6 +3,7 @@ import 'transaction.dart';
 import 'user_settings.dart';
 import 'daily_transaction_group.dart';
 import '../services/hive_service.dart';
+import '../services/widget_service.dart';
 
 class AppState extends ChangeNotifier {
   UserSettings _userSettings = UserSettings();
@@ -26,6 +27,7 @@ class AppState extends ChangeNotifier {
     _transactions = HiveService.getAllTransactions();
     _invalidateCache();
     notifyListeners();
+    WidgetService.updateWidget();
   }
 
   void _invalidateCache() {
@@ -58,6 +60,7 @@ class AppState extends ChangeNotifier {
     _balance += transaction.amount;
     _invalidateCache();
     notifyListeners();
+    WidgetService.updateWidget();
   }
 
   void updateTransaction(int index, Transaction transaction) {
@@ -68,6 +71,7 @@ class AppState extends ChangeNotifier {
       _transactions[index] = transaction;
       _invalidateCache();
       notifyListeners();
+      WidgetService.updateWidget();
     }
   }
 
@@ -78,6 +82,7 @@ class AppState extends ChangeNotifier {
       _transactions.removeAt(index);
       _invalidateCache();
       notifyListeners();
+      WidgetService.updateWidget();
     }
   }
 

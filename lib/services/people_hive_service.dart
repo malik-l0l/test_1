@@ -4,6 +4,7 @@ import '../models/person_summary.dart';
 import '../models/transaction.dart';
 import '../utils/constants.dart';
 import 'hive_service.dart';
+import 'widget_service.dart';
 
 class PeopleHiveService {
   static late Box<PeopleTransaction> _peopleTransactionsBox;
@@ -82,9 +83,10 @@ class PeopleHiveService {
       reason: _getMainTransactionReason(peopleTransaction),
       timestamp: peopleTransaction.timestamp,
     );
-    
+
     // Add to main transaction history (this will automatically update the balance)
     await HiveService.addTransaction(mainTransaction);
+    await WidgetService.updateWidget();
   }
 
   // Remove the corresponding main transaction from history
@@ -92,6 +94,7 @@ class PeopleHiveService {
     // Find and remove the corresponding main transaction
     final mainTransactionId = '${peopleTransaction.id}_main';
     await HiveService.deleteTransactionById(mainTransactionId);
+    await WidgetService.updateWidget();
   }
 
   // Generate appropriate reason text for main transaction
