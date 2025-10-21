@@ -37,23 +37,25 @@ class PeopleManagerScreenState extends State<PeopleManagerScreen> {
     try {
       final allPeople = PeopleHiveService.getAllPeopleSummaries();
 
-      setState(() {
-        // Separate active and settled people
-        _activePeople = allPeople.where((person) => !person.isSettled).toList();
-        _settledPeople = allPeople.where((person) => person.isSettled).toList();
+      if (mounted) {
+        setState(() {
+          // Separate active and settled people
+          _activePeople = allPeople.where((person) => !person.isSettled).toList();
+          _settledPeople = allPeople.where((person) => person.isSettled).toList();
 
-        // Calculate amounts you owe and amounts owed to you
-        _youOwe = 0.0;
-        _owesYou = 0.0;
+          // Calculate amounts you owe and amounts owed to you
+          _youOwe = 0.0;
+          _owesYou = 0.0;
 
-        for (final person in _activePeople) {
-          if (person.totalBalance > 0) {
-            _owesYou += person.totalBalance; // People owe you
-          } else if (person.totalBalance < 0) {
-            _youOwe += person.totalBalance.abs(); // You owe people
+          for (final person in _activePeople) {
+            if (person.totalBalance > 0) {
+              _owesYou += person.totalBalance; // People owe you
+            } else if (person.totalBalance < 0) {
+              _youOwe += person.totalBalance.abs(); // You owe people
+            }
           }
-        }
-      });
+        });
+      }
     } catch (e) {
       // Handle any potential errors gracefully
       if (mounted) {

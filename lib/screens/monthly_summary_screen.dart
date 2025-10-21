@@ -165,6 +165,7 @@ class _MonthlySummaryScreenState extends State<MonthlySummaryScreen> {
               setState(() {
                 _selectedMonth =
                     DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+                _loadMonthlyData();
               });
             },
             icon: const Icon(Icons.chevron_left),
@@ -183,6 +184,7 @@ class _MonthlySummaryScreenState extends State<MonthlySummaryScreen> {
                     setState(() {
                       _selectedMonth = DateTime(
                           _selectedMonth.year, _selectedMonth.month + 1);
+                      _loadMonthlyData();
                     });
                   },
             icon: const Icon(Icons.chevron_right),

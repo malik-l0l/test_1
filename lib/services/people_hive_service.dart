@@ -26,21 +26,57 @@ class PeopleHiveService {
   // Update a people transaction and adjust main transaction history
   static Future<void> updatePeopleTransaction(String id, PeopleTransaction newTransaction) async {
     final oldTransaction = _peopleTransactionsBox.get(id);
-    
+
     if (oldTransaction != null) {
-      // Remove the old transaction's effect from main history (if it had any)
-      if (oldTransaction.mainBalanceImpact != 0) {
-        await _removeMainTransactionHistory(oldTransaction);
+      final oldMainBalanceImpact = oldTransaction.mainBalanceImpact;
+      final newMainBalanceImpact = newTransaction.mainBalanceImpact;
+
+      // Only update main transaction history if the main balance impact changed
+      if (oldMainBalanceImpact != newMainBalanceImpact) {
+        // Remove the old transaction's effect from main history (if it had any)
+        if (oldMainBalanceImpact != 0) {
+          await _removeMainTransactionHistory(oldTransaction);
+        }
+
+        // Add to main history if new transaction affects main balance
+        if (newMainBalanceImpact != 0) {
+          await _updateMainTransactionHistory(newTransaction);
+        }
+      } else if (oldMainBalanceImpact != 0 && newMainBalanceImpact != 0) {
+        // If the main balance impact is the same but non-zero, update the existing main transaction
+        final mainTransactionId = '${newTransaction.id}_main';
+        final existingMainTransaction = HiveService.getTransactionById(mainTransactionId);
+
+        if (existingMainTransaction != null) {
+          // Update the main transaction with new details (reason, date, etc.)
+          final updatedMainTransaction = Transaction(
+            id: mainTransactionId,
+            date: newTransaction.date,
+            amount: newTransaction.mainBalanceImpact,
+            reason: _getMainTransactionReason(newTransaction),
+            timestamp: newTransaction.timestamp,
+          );
+
+          // Use put directly without changing balance (since amount is the same)
+          await HiveService.transactionsBox.put(mainTransactionId, updatedMainTransaction);
+        }
+      }
+    } else {
+      // New transaction (no old one exists)
+      if (newTransaction.mainBalanceImpact != 0) {
+        await _updateMainTransactionHistory(newTransaction);
       }
     }
-    
-    // Apply the new transaction
-    await _peopleTransactionsBox.put(id, newTransaction);
-    
-    // Add to main history if it affects main balance
-    if (newTransaction.mainBalanceImpact != 0) {
-      await _updateMainTransactionHistory(newTransaction);
+
+    // Apply the new transaction with the new ID to ensure consistency
+    await _peopleTransactionsBox.put(newTransaction.id, newTransaction);
+
+    // If the ID changed (shouldn't happen in normal flow), clean up old entry
+    if (id != newTransaction.id && _peopleTransactionsBox.containsKey(id)) {
+      await _peopleTransactionsBox.delete(id);
     }
+
+    await WidgetService.updateWidget();
   }
 
   // Delete a people transaction and adjust main transaction history

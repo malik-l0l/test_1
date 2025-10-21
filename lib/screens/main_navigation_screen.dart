@@ -172,6 +172,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          top: BorderSide(
+            color: Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -224,13 +230,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
       int index, IconData outlinedIcon, IconData filledIcon, String label) {
     final isSelected = _currentIndex == index;
     final color =
-        isSelected ? Theme.of(context).primaryColor : Colors.grey[600];
+        isSelected ? Colors.white.withOpacity(0.95) : Colors.grey[600];
 
-    return GestureDetector(
+    return InkWell(
       onTap: () => _onTabTapped(index),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       child: Container(
-        // Standardized minimum touch target (44px)
-        constraints: BoxConstraints(minHeight: 44, minWidth: 44),
+        // Standardized minimum touch target (48px for better tap detection)
+        constraints: BoxConstraints(minHeight: 48, minWidth: 48),
         child: AnimatedContainer(
           duration: Duration(milliseconds: 200),
           curve: Curves.easeInOut,
@@ -447,8 +455,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           appState.loadFromHive();
           _homeScreenKey.currentState?.refreshData();
           if (mounted) {
-            CustomSnackBar.show(
-                context, 'Transaction added successfully!', SnackBarType.success);
+            CustomSnackBar.show(context, 'Transaction added successfully!',
+                SnackBarType.success);
           }
         },
       ),
@@ -468,8 +476,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
           _homeScreenKey.currentState?.refreshData();
           _peopleScreenKey.currentState?.refreshData();
           if (mounted) {
-            CustomSnackBar.show(context, 'People transaction added successfully!',
-                SnackBarType.success);
+            CustomSnackBar.show(context,
+                'People transaction added successfully!', SnackBarType.success);
           }
         },
       ),

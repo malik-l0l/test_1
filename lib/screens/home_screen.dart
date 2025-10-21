@@ -12,6 +12,7 @@ import '../widgets/date_header.dart';
 import '../widgets/custom_snackbar.dart';
 import 'monthly_summary_screen.dart';
 import '../widgets/add_transaction_modal.dart';
+import '../widgets/add_people_transaction_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -295,27 +296,68 @@ class HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMix
   }
 
   void _editTransaction(Transaction transaction, int index) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddTransactionModal(
-        transaction: transaction,
-        onSave: (updatedTransaction) async {
-          await HiveService.updateTransaction(index, updatedTransaction);
-          final appState = Provider.of<AppState>(context, listen: false);
-          appState.loadFromHive();
-          _loadInitialData();
-          if (mounted) {
-            CustomSnackBar.show(
-              context,
-              'Transaction updated successfully!',
-              SnackBarType.success,
-            );
-          }
-        },
-      ),
-    );
+    if (transaction.id.endsWith('_main')) {
+      final peopleTransactionId = transaction.id.replaceAll('_main', '');
+      try {
+        final peopleTransaction = PeopleHiveService.getAllPeopleTransactions()
+            .firstWhere((t) => t.id == peopleTransactionId);
+
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => AddPeopleTransactionModal(
+            transaction: peopleTransaction,
+            onSave: (updatedTransaction) async {
+              await PeopleHiveService.updatePeopleTransaction(
+                peopleTransactionId,
+                updatedTransaction,
+              );
+              final appState = Provider.of<AppState>(context, listen: false);
+              appState.loadFromHive();
+              _loadInitialData();
+              if (mounted) {
+                CustomSnackBar.show(
+                  context,
+                  'People transaction updated successfully!',
+                  SnackBarType.success,
+                );
+              }
+            },
+          ),
+        );
+      } catch (e) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'Error: Could not find associated people transaction',
+            SnackBarType.error,
+          );
+        }
+      }
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => AddTransactionModal(
+          transaction: transaction,
+          onSave: (updatedTransaction) async {
+            await HiveService.updateTransaction(index, updatedTransaction);
+            final appState = Provider.of<AppState>(context, listen: false);
+            appState.loadFromHive();
+            _loadInitialData();
+            if (mounted) {
+              CustomSnackBar.show(
+                context,
+                'Transaction updated successfully!',
+                SnackBarType.success,
+              );
+            }
+          },
+        ),
+      );
+    }
   }
 
   void _deleteTransaction(int index) {

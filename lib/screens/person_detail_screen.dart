@@ -275,9 +275,11 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
         prefilledPersonName: widget.personName,
         onSave: (transaction) async {
           await PeopleHiveService.addPeopleTransaction(transaction);
-          _loadData();
-          CustomSnackBar.show(context, 'People transaction added successfully!',
-              SnackBarType.success);
+          if (mounted) {
+            _loadData();
+            CustomSnackBar.show(context, 'People transaction added successfully!',
+                SnackBarType.success);
+          }
         },
       ),
     );
@@ -295,9 +297,11 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
             transaction.id,
             updatedTransaction,
           );
-          _loadData();
-          CustomSnackBar.show(context,
-              'People transaction updated successfully!', SnackBarType.success);
+          if (mounted) {
+            _loadData();
+            CustomSnackBar.show(context,
+                'People transaction updated successfully!', SnackBarType.success);
+          }
         },
       ),
     );
@@ -318,9 +322,11 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
             onPressed: () async {
               await PeopleHiveService.deletePeopleTransaction(transaction.id);
               Navigator.pop(context);
-              _loadData();
-              CustomSnackBar.show(context, 'Transaction deleted successfully!',
-                  SnackBarType.success);
+              if (mounted) {
+                _loadData();
+                CustomSnackBar.show(context, 'Transaction deleted successfully!',
+                    SnackBarType.success);
+              }
             },
             child: Text('Delete', style: TextStyle(color: Colors.red)),
           ),
