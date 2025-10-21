@@ -186,11 +186,40 @@ class _BalanceCardState extends State<BalanceCard>
     // Sort transactions by time
     todayTransactions.sort((a, b) => a.date.compareTo(b.date));
 
+    // Calculate balance at end of this day
+    final allTransactions = HiveService.getAllTransactions();
+    double dayBalance = widget.balance;
+
+    for (final transaction in allTransactions) {
+      if (transaction.date.isAfter(DateTime(targetDate.year,
+          targetDate.month, targetDate.day, 23, 59, 59))) {
+        dayBalance -= transaction.amount;
+      }
+    }
+
     if (todayTransactions.isEmpty) {
+      // Show flat line at the balance of that day
+      final startHour = 0;
+      _dailyBalances.add(DailyBalance(
+        DateTime(targetDate.year, targetDate.month, targetDate.day, startHour),
+        dayBalance,
+        0,
+        0,
+      ));
+      _chartData.add(FlSpot(startHour.toDouble(), dayBalance));
+
+      final endHour = 23.99;
+      _dailyBalances.add(DailyBalance(
+        DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59),
+        dayBalance,
+        0,
+        0,
+      ));
+      _chartData.add(FlSpot(endHour, dayBalance));
       return;
     }
 
-    double runningBalance = widget.balance;
+    double runningBalance = dayBalance;
 
     // Work backwards to get starting balance (balance at start of day)
     for (final transaction in todayTransactions.reversed) {
@@ -525,28 +554,6 @@ class _BalanceCardState extends State<BalanceCard>
   }
 
   Widget _buildChartDisplay() {
-    if (_chartData.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.trending_up,
-              color: Colors.white.withOpacity(0.5),
-              size: 48,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'No data for this ${_selectedPeriod.name}',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Column(
       children: [

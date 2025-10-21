@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/people_hive_service.dart';
 import '../services/contact_service.dart';
 import '../services/transaction_analysis_service.dart';
 import '../models/people_transaction.dart';
 import '../models/person_summary.dart';
+import '../models/app_state.dart';
 import '../widgets/people_transaction_card.dart';
 import '../widgets/add_people_transaction_modal.dart';
 import '../widgets/share_modal.dart';
@@ -276,6 +278,8 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
         onSave: (transaction) async {
           await PeopleHiveService.addPeopleTransaction(transaction);
           if (mounted) {
+            final appState = Provider.of<AppState>(context, listen: false);
+            appState.loadFromHive();
             _loadData();
             CustomSnackBar.show(context, 'People transaction added successfully!',
                 SnackBarType.success);
@@ -298,6 +302,8 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
             updatedTransaction,
           );
           if (mounted) {
+            final appState = Provider.of<AppState>(context, listen: false);
+            appState.loadFromHive();
             _loadData();
             CustomSnackBar.show(context,
                 'People transaction updated successfully!', SnackBarType.success);
@@ -323,6 +329,8 @@ class _PersonDetailScreenState extends State<PersonDetailScreen> {
               await PeopleHiveService.deletePeopleTransaction(transaction.id);
               Navigator.pop(context);
               if (mounted) {
+                final appState = Provider.of<AppState>(context, listen: false);
+                appState.loadFromHive();
                 _loadData();
                 CustomSnackBar.show(context, 'Transaction deleted successfully!',
                     SnackBarType.success);
